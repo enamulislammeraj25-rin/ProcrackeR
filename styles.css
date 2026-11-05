@@ -412,7 +412,7 @@ html[data-theme="dark"] .tiny-action{background:#303146;color:#c2bdd2;border-col
 html[data-theme="dark"] .habit-matrix-legend{color:var(--muted)}
 html[data-theme="dark"] .completion-ring{background:conic-gradient(#c0a4ed var(--progress),#3b3c50 0)}
 html[data-theme="dark"] .completion-ring:before{background:rgba(38,39,58,.6)}
-html[data-theme="dark"] .completion-ring>div{background:#252638;color:var(--ink)}
+html[data-theme="dark"] .completion-ring>div{background:#3b3c50;color:var(--ink)}
 html[data-theme="dark"] .completion-ring strong,html[data-theme="dark"] .weekly-average>strong{color:var(--teal)}
 html[data-theme="dark"] .mini-bar-track{background:#38394e;border-color:var(--line)}
 html[data-theme="dark"] .mini-bar-col small{color:var(--muted)}

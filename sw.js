@@ -1,5 +1,5 @@
-const CACHE = 'tide-static-v51';
-const ASSETS = ['./', './index.html', './styles.css?v=43', './app.js?v=21', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png'];
+const CACHE = 'tide-static-v52';
+const ASSETS = ['./', './index.html', './styles.css?v=44', './app.js?v=21', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)));
   self.skipWaiting();
