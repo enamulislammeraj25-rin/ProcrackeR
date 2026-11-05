@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f7f3fb">
+  <meta name="description" content="A calm, connected space for tracking study time, daily habits, and meaningful progress.">
+  <title>Tide — Daily Progress</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css?v=42">
+  <script defer src="app.js?v=21"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar open" id="sidebar">
+      <a class="brand" href="#overview" aria-label="Tide home">
+        <span class="brand-mark"><span></span><span></span><span></span></span>
+        <span><strong>tide</strong><small>daily progress</small></span>
+      </a>
+      <div class="sidebar-label">WORKSPACE</div>
+      <nav class="side-nav" aria-label="Main navigation">
+        <button class="nav-item active" data-page="overview"><span class="nav-icon">◫</span><span>Overview</span></button>
+        <button class="nav-item" data-page="study"><span class="nav-icon">▦</span><span>Study tracker</span></button>
+        <button class="nav-item" data-page="habits"><span class="nav-icon">✓</span><span>Daily habits</span></button>
+        <button class="nav-item" data-page="reports"><span class="nav-icon">↗</span><span>Progress reports</span><span class="nav-dot" id="report-dot"></span></button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="sidebar-note">
+          <span class="note-spark">✳</span>
+          <p>Small steps count.<br><strong>Keep showing up.</strong></p>
+        </div>
+        <button class="nav-item" data-page="settings"><span class="nav-icon">⚙</span><span>Settings & sync</span></button>
+        <div class="sidebar-foot">Your progress stays yours.</div>
+      </div>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar">
+        <div class="mobile-brand"><span class="brand-mark"><span></span><span></span><span></span></span><strong>tide</strong></div>
+        <div class="topbar-right">
+          <span class="sync-indicator" id="sync-indicator"><i></i><span>Saved on this device</span></span>
+          <button class="icon-button" id="install-button" data-action="install-app" title="Install app" aria-label="Install app" hidden>↓</button>
+          <label class="theme-toggle" for="theme-dark"><span>Dark theme</span><input class="switch" type="checkbox" id="theme-dark" aria-label="Toggle dark theme"></label>
+        </div>
+      </header>
+
+      <div id="app-content" class="page-content" aria-live="polite"></div>
+
+      <nav class="mobile-nav" aria-label="Mobile navigation">
+        <button class="mobile-nav-item active" data-page="overview"><span>◫</span><small>Home</small></button>
+        <button class="mobile-nav-item" data-page="study"><span>▦</span><small>Study</small></button>
+        <button class="mobile-nav-item" data-page="habits"><span>✓</span><small>Habits</small></button>
+        <button class="mobile-nav-item" data-page="reports"><span>↗</span><small>Reports</small></button>
+        <button class="mobile-nav-item" data-page="settings"><span>⚙</span><small>Settings</small></button>
+      </nav>
+    </main>
+  </div>
+
+  <div id="modal-root"></div>
+  <input id="import-file" type="file" accept="application/json,.json" hidden>
+</body>
+</html>
