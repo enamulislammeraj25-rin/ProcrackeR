@@ -23,7 +23,8 @@ const CONTEXT_TAG_OPTIONS = [
   { name: 'Food', note: 'Meals and snacks' },
   { name: 'Prayer', note: 'Salah and prayer time' },
   { name: 'Important works', note: 'Essential tasks and responsibilities' },
-  { name: 'Wasting time', note: 'Time I would rather use differently' }
+  { name: 'Wasting time', note: 'Time I would rather use differently' },
+  { name: 'Sleep', note: 'Rest and recovery' }
 ];
 
 const DEFAULT_HABITS = [
@@ -119,6 +120,7 @@ function tagKind(tag) {
   if (value === 'prayer') return 'square';
   if (value.startsWith('important work')) return 'triangle';
   if (value === 'wasting time') return 'cross';
+  if (value === 'sleep') return 'hexagon';
   return 'other';
 }
 function tagGlyph(tag) {
@@ -128,6 +130,7 @@ function tagGlyph(tag) {
     square: '<rect x="2.8" y="2.8" width="12.4" height="12.4" rx="2" fill="#65caff" stroke="#242638" stroke-width="2"/>',
     triangle: '<path d="M9 2.1 16.1 15H1.9Z" fill="#8cdb75" stroke="#242638" stroke-width="2" stroke-linejoin="round"/>',
     cross: '<path d="M5 5 13 13M13 5 5 13" stroke="#242638" stroke-width="6" stroke-linecap="round"/><path d="M5 5 13 13M13 5 5 13" stroke="#ff6f83" stroke-width="3.2" stroke-linecap="round"/>',
+    hexagon: '<path d="M4.1 2.5h9.8L16.7 9l-2.8 6.5H4.1L1.3 9Z" fill="#b8a8d8" stroke="#242638" stroke-width="1.8" stroke-linejoin="round"/>',
     other: '<path d="M9 1.8 16.2 9 9 16.2 1.8 9Z" fill="#b8a8d8" stroke="#242638" stroke-width="1.8"/>'
   };
   return `<svg class="tag-glyph tag-glyph-${kind}" viewBox="0 0 18 18" role="img" aria-label="${kind} tag">${shapes[kind]}</svg>`;
