@@ -81,14 +81,13 @@ function loadData() {
 let data = loadData();
 if (!localStorage.getItem(DATA_KEY)) localStorage.setItem(DATA_KEY, JSON.stringify(data));
 
-// A freshly opened device gets default data in localStorage. That default must
-// never be treated as newer user progress and uploaded over an existing cloud row.
+// A new device starts with default local data. That empty starter data must
+// never overwrite an existing cloud record just because its timestamp is newer.
 function hasMeaningfulLocalData() {
   if (localStorage.getItem(LOCAL_EDIT_KEY) === '1') return true;
   if (Object.keys(data.daily || {}).length > 0) return true;
   return JSON.stringify(data.habits || []) !== JSON.stringify(DEFAULT_HABITS);
 }
-
 let currentPage = 'overview';
 let selectedDate = localDate();
 let selectedHour = new Date().getHours();
@@ -303,7 +302,7 @@ function renderStudy() {
 }
 function renderHabits() {
   const today = localDate();
-  const dates = [today];
+  const dates = Array.from({ length: 7 }, (_, index) => addDays(today, index - 6));
   const habits = data.habits.filter(h => !h.archived);
   const hs = habitStats(today);
   const pct = Math.round(hs.rate);
@@ -314,7 +313,7 @@ function renderHabits() {
     return `<div class="habit-day-heading ${isToday ? 'is-today' : 'is-past'}" title="${fmtDate(day, { weekday:'long', month:'long', day:'numeric' })}"><span>${weekday}</span><strong>${dayNumber}</strong>${isToday ? '<em>Today</em>' : ''}</div>`;
   }).join('');
   const renderHabitRow = h => {
-      const helper = h.id === 'study' || h.id === 'porn-free' ? '' : (h.helper || (h.mode === 'avoid' ? 'Tick when you avoided this behaviour.' : ''));
+      const helper = h.helper || (h.group && h.group !== 'General' ? h.group : (h.mode === 'avoid' ? 'Tick when you avoided this behaviour.' : ''));
       const cells = dates.map(day => {
         const checked = Boolean(readDay(day).habits?.[h.id]);
         const isToday = day === today;
@@ -322,10 +321,9 @@ function renderHabits() {
       }).join('');
       return `<div class="habit-matrix-row"><div class="habit-matrix-name"><div class="habit-name">${esc(h.name)}</div>${helper ? `<div class="habit-helper">${esc(helper)}</div>` : ''}</div>${cells}<div class="habit-row-actions"><button class="tiny-action" data-action="edit-habit" data-id="${esc(h.id)}" title="Edit ${esc(h.name)}" aria-label="Edit ${esc(h.name)}">···</button></div></div>`;
   };
-  const salah = habits.filter(h => h.group === 'Salah');
-  const otherHabits = habits.filter(h => h.group !== 'Salah');
-  const salahRow = salah.length ? `<div class="salah-box"><div class="salah-row"><div class="habit-matrix-name"><div class="habit-name">Salah</div></div>${dates.map(day => `<div class="salah-day-cell ${day === today ? 'is-today' : 'is-past'}">${salah.map(prayer => `<input class="habit-checkbox salah-checkbox" type="checkbox" data-action="habit-toggle" data-id="${esc(prayer.id)}" data-date="${day}" ${readDay(day).habits?.[prayer.id] ? 'checked' : ''} aria-label="${esc(prayer.name)} on ${fmtDate(day, { weekday:'long', month:'long', day:'numeric' })}" title="${esc(prayer.name)} · ${fmtDate(day)}"></input>`).join('')}</div>`).join('')}<div class="habit-row-actions"></div></div></div>` : '';
-  const rows = `${salahRow}${otherHabits.length ? `<div class="habit-items-box">${otherHabits.map(renderHabitRow).join('')}</div>` : ''}`;
+  // Keep every habit as its own labelled row. This also ensures custom habits
+  // assigned to the "Salah" group remain visible and individually identifiable.
+  const rows = habits.length ? `<div class="habit-items-box">${habits.map(renderHabitRow).join('')}</div>` : '';
   const weekStats = dates.map(day => habitStats(day));
   const weekAverage = Math.round(average(weekStats.map(day => day.rate)));
   const weekBars = dates.map((day, index) => {
@@ -548,7 +546,6 @@ document.addEventListener('change', (event) => {
 });
 
 document.addEventListener('submit', async (event) => {
-  if (event.target.matches('form#habit-form')) { event.preventDefault(); saveHabitForm(event.target); return; }
   if (event.target.id === 'cloud-form') { event.preventDefault(); await saveCloudForm(event.target); return; }
 });
 
@@ -556,20 +553,47 @@ function showHabitModal(id = null) {
   const habit = id ? data.habits.find(h => h.id === id) : null;
   const root = $('#modal-root');
   root.innerHTML = `<div class="modal-backdrop" data-backdrop="habit"><section class="modal" role="dialog" aria-modal="true" aria-labelledby="habit-modal-title"><div class="modal-head"><div><h2 id="habit-modal-title">${habit ? 'Edit habit' : 'Add a habit'}</h2><p>Keep the name short so your daily checklist stays easy to scan.</p></div><button class="modal-close" data-action="habit-modal-close">×</button></div><form id="habit-form"><input type="hidden" name="id" value="${esc(habit?.id || '')}"><div class="field"><label>HABIT NAME</label><input name="name" required maxlength="48" placeholder="e.g. Read 10 pages" value="${esc(habit?.name || '')}"></div><div class="field"><label>GROUP</label><input name="group" maxlength="28" placeholder="e.g. Learning, Salah, Personal" value="${esc(habit?.group || 'General')}"></div><div class="field"><label>WHAT DOES CHECKING IT MEAN?</label><select name="mode"><option value="done" ${habit?.mode !== 'avoid' ? 'selected' : ''}>I completed this habit</option><option value="avoid" ${habit?.mode === 'avoid' ? 'selected' : ''}>I avoided this habit / behaviour</option></select></div><div class="field"><label>OPTIONAL NOTE</label><input name="helper" maxlength="90" placeholder="A short reminder (optional)" value="${esc(habit?.helper || '')}"></div><div class="modal-actions"><button class="btn btn-ghost" type="button" data-action="habit-modal-close">Cancel</button><button class="btn btn-primary" type="submit">${habit ? 'Save changes' : 'Add habit'}</button></div></form></section></div>`;
+  const habitForm = $('#habit-form', root);
+  habitForm?.addEventListener('submit', (event) => {
+    // Bind directly to the dynamically created form so the browser never
+    // performs a native page reload before the habit is saved.
+    event.preventDefault();
+    event.stopPropagation();
+    try {
+      saveHabitForm(habitForm);
+    } catch (error) {
+      console.error('Could not save habit:', error);
+      toast('Could not save this habit. Please try again.');
+    }
+  });
   $('#modal-root input[name="name"]')?.focus();
 }
 function saveHabitForm(form) {
-  const id = form.elements.id.value;
-  const name = form.elements.name.value.trim();
-  const group = form.elements.group.value.trim() || 'General';
-  const mode = form.elements.mode.value;
-  const helper = form.elements.helper.value.trim();
-  if (!name) return;
+  const fields = new FormData(form);
+  const id = String(fields.get('id') || '').trim();
+  const name = String(fields.get('name') || '').trim();
+  const group = String(fields.get('group') || '').trim() || 'General';
+  const mode = fields.get('mode') === 'avoid' ? 'avoid' : 'done';
+  const helper = String(fields.get('helper') || '').trim();
+
+  if (!name) {
+    toast('Please enter a habit name.');
+    form.querySelector('[name="name"]')?.focus();
+    return;
+  }
+
+  if (!Array.isArray(data.habits)) data.habits = [];
   if (id) {
-    const habit = data.habits.find(h => h.id === id);
-    if (habit) Object.assign(habit, { name, group, mode, helper });
-  } else data.habits.push({ id: uid(), name, group, mode, helper });
-  $('#modal-root').innerHTML = ''; saveData(); toast(id ? 'Habit updated.' : 'Habit added.');
+    const habit = data.habits.find(item => item.id === id);
+    if (habit) Object.assign(habit, { name, group, mode, helper, archived: false });
+    else data.habits.push({ id, name, group, mode, helper });
+  } else {
+    data.habits.push({ id: uid(), name, group, mode, helper });
+  }
+
+  $('#modal-root').innerHTML = '';
+  saveData({ rerender: true, sync: true });
+  toast(id ? 'Habit updated.' : 'Habit added.');
 }
 function deleteHabit(id) {
   if (!confirm('Remove this habit from your checklist? Existing historical records will remain in your backup, but the habit will no longer appear.')) return;
@@ -709,12 +733,10 @@ async function syncInitial() {
   if (remote?.payload && typeof remote.payload === 'object') {
     const remoteTime = new Date(remote.updated_at || remote.payload.updatedAt || 0).getTime();
     const localTime = new Date(data.updatedAt || 0).getTime();
-    const localHasUserChanges = hasMeaningfulLocalData();
 
-    // On a new device, defaultData() has a recent timestamp but contains no
-    // user progress. Always restore the existing cloud payload in that case.
-    // If both sides contain user data, the most recently edited copy wins.
-    if (!localHasUserChanges || remoteTime >= localTime) {
+    // On a newly connected device, its default starter data is not user progress.
+    // Restore the cloud copy instead of uploading that empty starter state.
+    if (!hasMeaningfulLocalData() || remoteTime >= localTime) {
       applyingRemote = true;
       try {
         data = remote.payload;
@@ -728,7 +750,7 @@ async function syncInitial() {
       await pushCloud();
     }
   } else {
-    // No cloud row exists yet: seed it from this device's current data.
+    // First cloud connection: seed the row from this device.
     await pushCloud();
   }
 
