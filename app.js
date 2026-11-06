@@ -1,6 +1,7 @@
 'use strict';
 
 const DATA_KEY = 'tide.progress.data.v1';
+const LOCAL_EDIT_KEY = 'tide.progress.local-edited.v1';
 const REMINDER_KEY = 'tide.progress.reminder.v1';
 const REMINDER_STATE_KEY = 'tide.progress.reminder-state.v1';
 const CLOUD_KEY = 'tide.progress.cloud.v1';
@@ -79,6 +80,15 @@ function loadData() {
 }
 let data = loadData();
 if (!localStorage.getItem(DATA_KEY)) localStorage.setItem(DATA_KEY, JSON.stringify(data));
+
+// A freshly opened device gets default data in localStorage. That default must
+// never be treated as newer user progress and uploaded over an existing cloud row.
+function hasMeaningfulLocalData() {
+  if (localStorage.getItem(LOCAL_EDIT_KEY) === '1') return true;
+  if (Object.keys(data.daily || {}).length > 0) return true;
+  return JSON.stringify(data.habits || []) !== JSON.stringify(DEFAULT_HABITS);
+}
+
 let currentPage = 'overview';
 let selectedDate = localDate();
 let selectedHour = new Date().getHours();
@@ -183,6 +193,7 @@ function formatHours(minutes) { return `${(minutes / 60).toFixed(minutes % 60 ==
 function saveData({ rerender = true, sync = true } = {}) {
   data.updatedAt = new Date().toISOString();
   localStorage.setItem(DATA_KEY, JSON.stringify(data));
+  if (!applyingRemote) localStorage.setItem(LOCAL_EDIT_KEY, '1');
   if (sync && !applyingRemote) scheduleCloudSync();
   if (rerender) render();
 }
@@ -694,15 +705,33 @@ async function syncInitial() {
   setSyncIndicator('Syncing…', 'syncing');
   const { data: remote, error } = await supabaseClient.from('progress_data').select('payload, updated_at').eq('user_id', syncUser.id).maybeSingle();
   if (error) throw error;
-  if (remote?.payload) {
+
+  if (remote?.payload && typeof remote.payload === 'object') {
     const remoteTime = new Date(remote.updated_at || remote.payload.updatedAt || 0).getTime();
     const localTime = new Date(data.updatedAt || 0).getTime();
-    if (remoteTime > localTime) {
+    const localHasUserChanges = hasMeaningfulLocalData();
+
+    // On a new device, defaultData() has a recent timestamp but contains no
+    // user progress. Always restore the existing cloud payload in that case.
+    // If both sides contain user data, the most recently edited copy wins.
+    if (!localHasUserChanges || remoteTime >= localTime) {
       applyingRemote = true;
-      data = remote.payload; data.updatedAt = remote.updated_at || data.updatedAt;
-      localStorage.setItem(DATA_KEY, JSON.stringify(data)); applyingRemote = false; render();
-    } else if (localTime > remoteTime) await pushCloud();
-  } else await pushCloud();
+      try {
+        data = remote.payload;
+        data.updatedAt = remote.updated_at || data.updatedAt || new Date().toISOString();
+        localStorage.setItem(DATA_KEY, JSON.stringify(data));
+      } finally {
+        applyingRemote = false;
+      }
+      render();
+    } else {
+      await pushCloud();
+    }
+  } else {
+    // No cloud row exists yet: seed it from this device's current data.
+    await pushCloud();
+  }
+
   subscribeRealtime();
   setSyncIndicator(`Synced · ${syncUser.email || 'cloud account'}`);
   const status = $('#cloud-status'); if (status) { status.className = 'sync-status success'; status.textContent = `Connected as ${syncUser.email || 'your account'}. Changes sync automatically.`; }
