@@ -537,7 +537,7 @@ document.addEventListener('change', (event) => {
 });
 
 document.addEventListener('submit', async (event) => {
-  if (event.target.id === 'habit-form') { event.preventDefault(); saveHabitForm(event.target); return; }
+  if (event.target.matches('form#habit-form')) { event.preventDefault(); saveHabitForm(event.target); return; }
   if (event.target.id === 'cloud-form') { event.preventDefault(); await saveCloudForm(event.target); return; }
 });
 
